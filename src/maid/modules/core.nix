@@ -57,6 +57,7 @@ let
       pkgs.sd-switch
       pkgs.nix
       pkgs.gnugrep
+      pkgs.lndir
     ];
     text = ''
       while getopts "S" opt; do
@@ -126,28 +127,18 @@ let
          done
       fi
 
-      # Init empty array
-      sd_switch_flags=()
-      # Check if it's a symlink
-      if [[ -h "$config_home/systemd/user" ]]; then
-        # Check if pointed link exists and is a directory
-        if [[ -d "$(realpath "$config_home/systemd/user")" ]]; then
-          sd_switch_flags+=("--old-units" "$(realpath "$config_home/systemd/user")")
-        fi
-      elif [[ -e "$config_home/systemd/user" ]]; then
+      if [[ -e "$config_home/systemd/user" ]]; then
         rm -rf "$config_home/systemd/user"
       fi
 
-      nix-store \
-        --realise ${config.build.units} \
-        --add-root "$config_home/systemd/user" \
-        > /dev/null
+      mkdir -p "$config_home/systemd/user"
+      lndir ${config.build.units} "$config_home/systemd/user" > /dev/null
 
       if [[ -n "''${no_sd_switch:-}" ]]; then
         echo ":: Skipping sd-switch"
       else
         echo ":: Loading systemd units"
-        sd-switch --new-units "$config_home/systemd/user" "''${sd_switch_flags[@]}"
+        sd-switch --new-units "$config_home/systemd/user"
       fi
     '';
   };
